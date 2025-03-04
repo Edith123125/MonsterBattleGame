@@ -1,132 +1,141 @@
+import os
+import random
 import sqlite3
+import pygame
+import sys
+import time
 
-# Connect to the database
+# Fix audio issues in WSL
+os.environ["SDL_AUDIODRIVER"] = "pulseaudio"
+
+pygame.init()
+pygame.mixer.init()
+
+# Load attack sound safely
+try:
+    attack_sound = pygame.mixer.Sound("assets/attack.wav")
+except pygame.error:
+    print("⚠️ Warning: Sound failed to load.")
+    attack_sound = None  # Prevent crash
+
+# Screen settings
+WIDTH, HEIGHT = 800, 600
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Monster Battle")
+
+# Colors
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+GREEN = (0, 200, 0)
+RED = (200, 0, 0)
+BLUE = (0, 0, 200)
+
+# Font
+font = pygame.font.Font(None, 36)
+
+# Database connection
 def connect():
     return sqlite3.connect("database/monsters.db")
 
-# CREATE TABLE: Ensure the monsters table exists
-def create_table():
+# Get all monsters
+def get_monsters():
     conn = connect()
     cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS monsters (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT UNIQUE NOT NULL,
-            type TEXT NOT NULL,
-            health INTEGER NOT NULL,
-            attack INTEGER NOT NULL,
-            defense INTEGER NOT NULL
-        )
-    ''')
-    conn.commit()
-    conn.close()
-    print("✅ Table 'monsters' ensured to exist.")
-
-# CREATE: Add a new monster (prevents duplicates)
-def add_monster(name, monster_type, health, attack, defense):
-    if monster_exists(name):
-        print(f"⚠️ Monster '{name}' already exists!")
-        return
-    
-    conn = connect()
-    cursor = conn.cursor()
-    cursor.execute('''
-        INSERT INTO monsters (name, type, health, attack, defense)
-        VALUES (?, ?, ?, ?, ?)
-    ''', (name, monster_type, health, attack, defense))
-    conn.commit()
-    conn.close()
-    print(f"✅ Monster '{name}' added successfully!")
-
-# READ: Get all monsters
-def get_all_monsters():
-    conn = connect()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM monsters")
+    cursor.execute("SELECT id, name, type, health, attack, defense, speed FROM monsters")
     monsters = cursor.fetchall()
     conn.close()
     return monsters
 
-# SEARCH: Find a monster by name
-def search_monster_by_name(name):
-    conn = connect()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM monsters WHERE name LIKE ?", ('%' + name + '%',))
-    monsters = cursor.fetchall()
-    conn.close()
-    return monsters
+# Display text on screen
+def draw_text(text, x, y, color=BLACK):
+    rendered_text = font.render(text, True, color)
+    screen.blit(rendered_text, (x, y))
 
-# SEARCH: Find monsters by type
-def search_monster_by_type(monster_type):
-    conn = connect()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM monsters WHERE type = ?", (monster_type,))
-    monsters = cursor.fetchall()
-    conn.close()
-    return monsters
+# Draw health bars
+def draw_health_bar(x, y, current_hp, max_hp):
+    bar_width = 200
+    bar_height = 20
+    fill_width = int((current_hp / max_hp) * bar_width)
+    pygame.draw.rect(screen, RED, (x, y, bar_width, bar_height))
+    pygame.draw.rect(screen, GREEN, (x, y, fill_width, bar_height))
 
-# FILTER: Get monsters above a certain health value
-def filter_monsters_by_health(min_health):
-    conn = connect()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM monsters WHERE health >= ?", (min_health,))
-    monsters = cursor.fetchall()
-    conn.close()
-    return monsters
+# Player chooses a monster
+def choose_monster():
+    monsters = get_monsters()
+    selected_index = 0
+    running = True
 
-# UPDATE: Update a monster’s stats
-def update_monster(monster_id, name, monster_type, health, attack, defense):
-    conn = connect()
-    cursor = conn.cursor()
-    cursor.execute('''
-        UPDATE monsters 
-        SET name = ?, type = ?, health = ?, attack = ?, defense = ? 
-        WHERE id = ?
-    ''', (name, monster_type, health, attack, defense, monster_id))
-    conn.commit()
-    conn.close()
-    print(f"✅ Monster ID {monster_id} updated successfully!")
+    while running:
+        screen.fill(WHITE)
+        draw_text("Choose Your Monster (Press UP/DOWN, ENTER to select):", 50, 50, BLUE)
 
-# DELETE: Remove a monster
-def delete_monster(monster_id):
-    conn = connect()
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM monsters WHERE id = ?", (monster_id,))
-    conn.commit()
-    conn.close()
-    print(f"🗑️ Monster ID {monster_id} deleted successfully!")
+        for i, monster in enumerate(monsters):
+            color = GREEN if i == selected_index else BLACK
+            draw_text(f"{monster[1]} (Type: {monster[2]}, HP: {monster[3]})", 100, 100 + i * 40, color)
 
-# DELETE ALL: Reset the database (USE CAREFULLY)
-def delete_all_monsters():
-    conn = connect()
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM monsters")
-    conn.commit()
-    conn.close()
-    print("⚠️ All monsters have been deleted!")
+        pygame.display.flip()
 
-# CHECK: See if a monster already exists
-def monster_exists(name):
-    conn = connect()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM monsters WHERE name = ?", (name,))
-    monster = cursor.fetchone()
-    conn.close()
-    return monster is not None
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_DOWN:
+                    selected_index = (selected_index + 1) % len(monsters)
+                if event.key == pygame.K_UP:
+                    selected_index = (selected_index - 1) % len(monsters)
+                if event.key == pygame.K_RETURN:
+                    return monsters[selected_index]
 
-# RUN SCRIPT: Create table and insert sample monsters
+# Real-time battle system
+def battle():
+    player_monster = choose_monster()
+    enemy_monster = random.choice([m for m in get_monsters() if m != player_monster])
+
+    player_hp, max_player_hp = player_monster[3], player_monster[3]
+    enemy_hp, max_enemy_hp = enemy_monster[3], enemy_monster[3]
+
+    player_speed = player_monster[6]
+    enemy_speed = enemy_monster[6]
+
+    running = True
+    last_attack_time = 0
+    attack_cooldown = 1.5  # 1.5 seconds cooldown between attacks
+
+    while running:
+        screen.fill(WHITE)
+
+        # Display monsters and health bars
+        draw_text(f"Your Monster: {player_monster[1]}", 50, 50, GREEN)
+        draw_health_bar(50, 80, player_hp, max_player_hp)
+
+        draw_text(f"Enemy Monster: {enemy_monster[1]}", 50, 200, RED)
+        draw_health_bar(50, 230, enemy_hp, max_enemy_hp)
+
+        if player_hp <= 0 or enemy_hp <= 0:
+            winner = player_monster[1] if player_hp > 0 else enemy_monster[1]
+            draw_text(f"{winner} wins the battle!", 50, 300, BLACK)
+            pygame.display.flip()
+            time.sleep(2)
+            pygame.quit()
+            sys.exit()
+
+        # Check attack cooldown
+        current_time = time.time()
+        if current_time - last_attack_time > attack_cooldown:
+            if player_speed >= enemy_speed:
+                enemy_hp -= max(1, player_monster[4] - enemy_monster[5])
+            else:
+                player_hp -= max(1, enemy_monster[4] - player_monster[5])
+            last_attack_time = current_time
+            if attack_sound:
+                attack_sound.play()
+
+        pygame.display.flip()
+        pygame.time.delay(50)
+
+    pygame.quit()
+    sys.exit()
+
 if __name__ == "__main__":
-    create_table()  # Ensure table exists before adding monsters
-    
-    # Add sample monsters (prevents duplicate errors)
-    add_monster("Drakon", "Fire", 100, 30, 20)
-    add_monster("AquaSerpent", "Water", 120, 25, 15)
-    add_monster("TerraBeast", "Earth", 150, 40, 30)
-
-    # Print all monsters to confirm insertion
-    print("\n📜 All Monsters in Database:")
-    for monster in get_all_monsters():
-        print(monster)
-
-    # Uncomment below to reset the database
-    # delete_all_monsters()
+    battle()
