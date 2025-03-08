@@ -10,12 +10,14 @@ os.environ["SDL_AUDIODRIVER"] = "pulseaudio"
 pygame.init()
 pygame.mixer.init()
 
-# Try loading attack sound safely
+# Try loading attack sounds safely
 try:
-    attack_sound = pygame.mixer.Sound("assets/attack.wav")
+    attack_sound_normal = pygame.mixer.Sound("assets/attack_normal.wav")
+    attack_sound_powerful = pygame.mixer.Sound("assets/attack_powerful.wav")
 except pygame.error as e:
     print(f"Warning: Sound failed to load ({e})")
-    attack_sound = None  # Prevents crashes if sound is missing
+    attack_sound_normal = None
+    attack_sound_powerful = None
 
 # Screen settings
 WIDTH, HEIGHT = 800, 600
@@ -49,12 +51,12 @@ def get_monsters():
 def load_monster_image(name):
     path = f"assets/monsters/{name}.png"
     if os.path.exists(path):
-        return pygame.image.load(path)
+        return pygame.transform.scale(pygame.image.load(path), (100, 100))  # Resize to fit better
     
     placeholder_path = "assets/monsters/placeholder.png"
     if os.path.exists(placeholder_path):
         print(f"Warning: Image for {name} not found. Using placeholder.")
-        return pygame.image.load(placeholder_path)
+        return pygame.transform.scale(pygame.image.load(placeholder_path), (100, 100))
 
     print(f"Error: No image found for {name} and no placeholder exists! Exiting.")
     pygame.quit()
@@ -76,6 +78,16 @@ def draw_health_bar(x, y, current_hp, max_hp):
 # Shake screen effect
 def shake_screen():
     for _ in range(5):
+        screen.fill(WHITE)
+        pygame.display.update()
+        pygame.time.delay(50)
+
+# Flash effect when hit
+def flash_effect():
+    for _ in range(3):
+        screen.fill(RED)
+        pygame.display.update()
+        pygame.time.delay(50)
         screen.fill(WHITE)
         pygame.display.update()
         pygame.time.delay(50)
@@ -117,26 +129,17 @@ def choose_monster():
 # Battle system with attack choices
 def battle():
     player_monster = choose_monster()
-    print(f"DEBUG: Player selected {player_monster}")
-
     monsters_list = get_monsters()
-    print(f"DEBUG: All available monsters: {monsters_list}")
-
-    # Ensure we select a different monster as an enemy
     possible_enemies = [m for m in monsters_list if m[0] != player_monster[0]]
     
     if not possible_enemies:
-        print("No valid enemy monsters found! Exiting.")
         pygame.quit()
         sys.exit()
 
     enemy_monster = random.choice(possible_enemies)
-    print(f"DEBUG: Enemy selected {enemy_monster}")
-
     player_hp, max_player_hp = player_monster[3], player_monster[3]
     enemy_hp, max_enemy_hp = enemy_monster[3], enemy_monster[3]
 
-    # Load images
     player_image = load_monster_image(player_monster[1])
     enemy_image = load_monster_image(enemy_monster[1])
 
@@ -145,68 +148,45 @@ def battle():
 
     while running:
         screen.fill(WHITE)
-
-        # Display monsters and health bars
         draw_text(f"Your Monster: {player_monster[1]}", 50, 50, GREEN)
         draw_health_bar(50, 80, player_hp, max_player_hp)
-
         draw_text(f"Enemy Monster: {enemy_monster[1]}", 50, 200, RED)
         draw_health_bar(50, 230, enemy_hp, max_enemy_hp)
 
-        # Display monster images
-        if player_image:
-            screen.blit(player_image, (500, 80))
-        if enemy_image:
-            screen.blit(enemy_image, (500, 230))
+        screen.blit(player_image, (400, 80))
+        screen.blit(enemy_image, (400, 230))
 
-        if player_hp <= 0 or enemy_hp <= 0:
-            winner = player_monster[1] if player_hp > 0 else enemy_monster[1]
-            draw_text(f"{winner} wins the battle!", 50, 300, BLACK)
-            pygame.display.flip()
-            pygame.time.delay(2000)
-            pygame.quit()
-            sys.exit()
-
-        # Attack buttons
         pygame.draw.rect(screen, GREEN, (50, 400, 200, 50))
         pygame.draw.rect(screen, BLUE, (300, 400, 200, 50))
         draw_text("Attack (Normal)", 70, 415, WHITE)
         draw_text("Attack (Powerful)", 320, 415, WHITE)
-
         pygame.display.flip()
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
             if event.type == pygame.MOUSEBUTTONDOWN and player_turn:
-                x, y = event.pos
-                if 50 <= x <= 250 and 400 <= y <= 450:  # Normal Attack
-                    damage = max(1, player_monster[4] - enemy_monster[5])
-                    enemy_hp -= damage
-                    if attack_sound:
-                        attack_sound.play()
-                    shake_screen()
-                    player_turn = False
-                elif 300 <= x <= 500 and 400 <= y <= 450:  # Powerful Attack
-                    damage = max(1, (player_monster[4] * 1.5) - enemy_monster[5])
-                    enemy_hp -= damage
-                    if attack_sound:
-                        attack_sound.play()
-                    shake_screen()
-                    player_turn = False
+                if attack_sound_normal:
+                    attack_sound_normal.play()
+                flash_effect()
+                enemy_hp -= max(1, player_monster[4] - enemy_monster[5])
+                player_turn = False
 
-        # Enemy turn (random attack)
         if not player_turn and enemy_hp > 0:
             pygame.time.delay(1000)
-            enemy_damage = max(1, enemy_monster[4] - player_monster[5])
-            player_hp -= enemy_damage
-            if attack_sound:
-                attack_sound.play()
-            shake_screen()
+            if attack_sound_powerful:
+                attack_sound_powerful.play()
+            flash_effect()
+            player_hp -= max(1, enemy_monster[4] - player_monster[5])
             player_turn = True
 
-    pygame.quit()
-    sys.exit()
+        if player_hp <= 0 or enemy_hp <= 0:
+            winner = player_monster[1] if player_hp > 0 else enemy_monster[1]
+            draw_text(f"{winner} wins the battle!", 50, 300, BLACK)
+            pygame.display.flip()
+            pygame.time.delay(3000)
+            pygame.quit()
+            sys.exit()
 
 if __name__ == "__main__":
     battle()
