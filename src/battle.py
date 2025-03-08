@@ -32,10 +32,6 @@ BLUE = (0, 0, 200)
 # Font
 font = pygame.font.Font(None, 36)
 
-# Buttons
-attack_button = pygame.Rect(50, 400, 200, 50)
-special_button = pygame.Rect(300, 400, 200, 50)
-
 # Database connection
 def connect():
     return sqlite3.connect("database/monsters.db")
@@ -48,6 +44,21 @@ def get_monsters():
     monsters = cursor.fetchall()
     conn.close()
     return monsters
+
+# Load monster images safely
+def load_monster_image(name):
+    path = f"assets/monsters/{name}.png"
+    if os.path.exists(path):
+        return pygame.image.load(path)
+    
+    placeholder_path = "assets/monsters/placeholder.png"
+    if os.path.exists(placeholder_path):
+        print(f"Warning: Image for {name} not found. Using placeholder.")
+        return pygame.image.load(placeholder_path)
+
+    print(f"Error: No image found for {name} and no placeholder exists! Exiting.")
+    pygame.quit()
+    sys.exit()
 
 # Display text on screen
 def draw_text(text, x, y, color=BLACK):
@@ -72,8 +83,9 @@ def shake_screen():
 # Player chooses a monster
 def choose_monster():
     monsters = get_monsters()
+    
     if not monsters:
-        print("⚠️ No monsters found in database!")
+        print("No monsters found in the database.")
         pygame.quit()
         sys.exit()
 
@@ -105,17 +117,28 @@ def choose_monster():
 # Battle system with attack choices
 def battle():
     player_monster = choose_monster()
-    enemy_monsters = [m for m in get_monsters() if m != player_monster]
+    print(f"DEBUG: Player selected {player_monster}")
 
-    if not enemy_monsters:
-        print("⚠️ No enemy monsters available!")
+    monsters_list = get_monsters()
+    print(f"DEBUG: All available monsters: {monsters_list}")
+
+    # Ensure we select a different monster as an enemy
+    possible_enemies = [m for m in monsters_list if m[0] != player_monster[0]]
+    
+    if not possible_enemies:
+        print("No valid enemy monsters found! Exiting.")
         pygame.quit()
         sys.exit()
 
-    enemy_monster = random.choice(enemy_monsters)
+    enemy_monster = random.choice(possible_enemies)
+    print(f"DEBUG: Enemy selected {enemy_monster}")
 
     player_hp, max_player_hp = player_monster[3], player_monster[3]
     enemy_hp, max_enemy_hp = enemy_monster[3], enemy_monster[3]
+
+    # Load images
+    player_image = load_monster_image(player_monster[1])
+    enemy_image = load_monster_image(enemy_monster[1])
 
     running = True
     player_turn = True
@@ -130,6 +153,12 @@ def battle():
         draw_text(f"Enemy Monster: {enemy_monster[1]}", 50, 200, RED)
         draw_health_bar(50, 230, enemy_hp, max_enemy_hp)
 
+        # Display monster images
+        if player_image:
+            screen.blit(player_image, (500, 80))
+        if enemy_image:
+            screen.blit(enemy_image, (500, 230))
+
         if player_hp <= 0 or enemy_hp <= 0:
             winner = player_monster[1] if player_hp > 0 else enemy_monster[1]
             draw_text(f"{winner} wins the battle!", 50, 300, BLACK)
@@ -138,11 +167,11 @@ def battle():
             pygame.quit()
             sys.exit()
 
-        # Draw attack buttons
-        pygame.draw.rect(screen, GREEN, attack_button)
-        pygame.draw.rect(screen, BLUE, special_button)
-        draw_text("Attack (Normal)", attack_button.x + 30, attack_button.y + 15, WHITE)
-        draw_text("Attack (Powerful)", special_button.x + 30, special_button.y + 15, WHITE)
+        # Attack buttons
+        pygame.draw.rect(screen, GREEN, (50, 400, 200, 50))
+        pygame.draw.rect(screen, BLUE, (300, 400, 200, 50))
+        draw_text("Attack (Normal)", 70, 415, WHITE)
+        draw_text("Attack (Powerful)", 320, 415, WHITE)
 
         pygame.display.flip()
 
@@ -150,18 +179,17 @@ def battle():
             if event.type == pygame.QUIT:
                 running = False
             if event.type == pygame.MOUSEBUTTONDOWN and player_turn:
-                if attack_button.collidepoint(event.pos):  # Normal Attack
+                x, y = event.pos
+                if 50 <= x <= 250 and 400 <= y <= 450:  # Normal Attack
                     damage = max(1, player_monster[4] - enemy_monster[5])
                     enemy_hp -= damage
-                    print(f"⚔️ {player_monster[1]} dealt {damage} damage!")
                     if attack_sound:
                         attack_sound.play()
                     shake_screen()
                     player_turn = False
-                elif special_button.collidepoint(event.pos):  # Powerful Attack
-                    damage = max(1, int(player_monster[4] * 1.5) - enemy_monster[5])
+                elif 300 <= x <= 500 and 400 <= y <= 450:  # Powerful Attack
+                    damage = max(1, (player_monster[4] * 1.5) - enemy_monster[5])
                     enemy_hp -= damage
-                    print(f"🔥 {player_monster[1]} used a powerful attack! Dealt {damage} damage!")
                     if attack_sound:
                         attack_sound.play()
                     shake_screen()
@@ -172,7 +200,6 @@ def battle():
             pygame.time.delay(1000)
             enemy_damage = max(1, enemy_monster[4] - player_monster[5])
             player_hp -= enemy_damage
-            print(f"💥 {enemy_monster[1]} attacked! Dealt {enemy_damage} damage!")
             if attack_sound:
                 attack_sound.play()
             shake_screen()
