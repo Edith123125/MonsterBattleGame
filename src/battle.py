@@ -94,7 +94,7 @@ def flash_effect():
         pygame.display.update()
         pygame.time.delay(50)
 
-# New: Animate attack movement
+# Animate attack movement
 def animate_attack(attacker_x, attacker_y, attacker_img):
     for _ in range(5):
         screen.fill(WHITE)
@@ -108,7 +108,7 @@ def animate_attack(attacker_x, attacker_y, attacker_img):
         pygame.display.update()
         pygame.time.delay(50)
 
-# New: Draw projectile effect
+# Draw projectile effect
 def draw_projectile(start_x, start_y, end_x, end_y, color):
     for i in range(10):
         progress = i / 10
@@ -121,7 +121,7 @@ def draw_projectile(start_x, start_y, end_x, end_y, color):
 # Player chooses a monster
 def choose_monster():
     monsters = get_monsters()
-    
+
     if not monsters:
         print("No monsters found in the database.")
         pygame.quit()
@@ -136,7 +136,7 @@ def choose_monster():
 
         for i, monster in enumerate(monsters):
             color = GREEN if i == selected_index else BLACK
-            draw_text(f"{monster[1]} (Type: {monster[2]}, HP: {monster[3]})", 100, 100 + i * 40, color)
+            draw_text(f"{monster[1]} (Type: {monster[2]}, HP: {monster[3]}, ATK: {monster[4]}, DEF: {monster[5]})", 100, 100 + i * 40, color)
 
         pygame.display.flip()
 
@@ -152,7 +152,7 @@ def choose_monster():
                 if event.key == pygame.K_RETURN:
                     return monsters[selected_index]
 
-# Battle system with attack choices
+# Battle system
 def battle():
     player_monster = choose_monster()
     monsters_list = get_monsters()
