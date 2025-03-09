@@ -51,7 +51,7 @@ def get_monsters():
 def load_monster_image(name):
     path = f"assets/monsters/{name}.png"
     if os.path.exists(path):
-        return pygame.transform.scale(pygame.image.load(path), (100, 100))  # Resize to fit better
+        return pygame.transform.scale(pygame.image.load(path), (100, 100))  
     
     placeholder_path = "assets/monsters/placeholder.png"
     if os.path.exists(placeholder_path):
@@ -76,11 +76,13 @@ def draw_health_bar(x, y, current_hp, max_hp):
     pygame.draw.rect(screen, GREEN, (x, y, fill_width, bar_height))
 
 # Shake screen effect
-def shake_screen():
-    for _ in range(5):
+def screen_shake():
+    for _ in range(10):
+        offset_x = random.randint(-5, 5)
+        offset_y = random.randint(-5, 5)
         screen.fill(WHITE)
         pygame.display.update()
-        pygame.time.delay(50)
+        pygame.time.delay(30)
 
 # Flash effect when hit
 def flash_effect():
@@ -89,6 +91,30 @@ def flash_effect():
         pygame.display.update()
         pygame.time.delay(50)
         screen.fill(WHITE)
+        pygame.display.update()
+        pygame.time.delay(50)
+
+# New: Animate attack movement
+def animate_attack(attacker_x, attacker_y, attacker_img):
+    for _ in range(5):
+        screen.fill(WHITE)
+        screen.blit(attacker_img, (attacker_x + 10, attacker_y))  
+        pygame.display.update()
+        pygame.time.delay(50)
+
+    for _ in range(5):  
+        screen.fill(WHITE)
+        screen.blit(attacker_img, (attacker_x, attacker_y))  
+        pygame.display.update()
+        pygame.time.delay(50)
+
+# New: Draw projectile effect
+def draw_projectile(start_x, start_y, end_x, end_y, color):
+    for i in range(10):
+        progress = i / 10
+        x = int(start_x + (end_x - start_x) * progress)
+        y = int(start_y + (end_y - start_y) * progress)
+        pygame.draw.circle(screen, color, (x, y), 10)
         pygame.display.update()
         pygame.time.delay(50)
 
@@ -168,7 +194,9 @@ def battle():
             if event.type == pygame.MOUSEBUTTONDOWN and player_turn:
                 if attack_sound_normal:
                     attack_sound_normal.play()
-                flash_effect()
+                animate_attack(400, 80, player_image)
+                draw_projectile(400, 100, 400, 230, RED)
+                screen_shake()
                 enemy_hp -= max(1, player_monster[4] - enemy_monster[5])
                 player_turn = False
 
@@ -176,7 +204,9 @@ def battle():
             pygame.time.delay(1000)
             if attack_sound_powerful:
                 attack_sound_powerful.play()
-            flash_effect()
+            animate_attack(400, 230, enemy_image)
+            draw_projectile(400, 230, 400, 80, BLUE)
+            screen_shake()
             player_hp -= max(1, enemy_monster[4] - player_monster[5])
             player_turn = True
 
