@@ -5,39 +5,39 @@ import pygame
 import sys
 import time
 
-# Fix audio issues in WSL
+# The audion.
 os.environ["SDL_AUDIODRIVER"] = "pulseaudio"
 
 pygame.init()
 pygame.mixer.init()
 
-# Load attack sound safely
+# Loading the attack sound safely
 try:
     attack_sound = pygame.mixer.Sound("assets/attack.wav")
 except pygame.error:
     print("⚠️ Warning: Sound failed to load.")
-    attack_sound = None  # Prevent crash
+    attack_sound = None  # this Prevents a crash
 
-# Screen settings
+# settings of the screen
 WIDTH, HEIGHT = 800, 600
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Monster Battle")
 
-# Colors
+# The Colors
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 GREEN = (0, 200, 0)
 RED = (200, 0, 0)
 BLUE = (0, 0, 200)
 
-# Font
+# The Font
 font = pygame.font.Font(None, 36)
 
-# Database connection
+# connection to the database
 def connect():
     return sqlite3.connect("database/monsters.db")
 
-# Get all monsters
+# function to get all monsters
 def get_monsters():
     conn = connect()
     cursor = conn.cursor()
@@ -46,12 +46,12 @@ def get_monsters():
     conn.close()
     return monsters
 
-# Display text on screen
+# Displaying the text on screen
 def draw_text(text, x, y, color=BLACK):
     rendered_text = font.render(text, True, color)
     screen.blit(rendered_text, (x, y))
 
-# Draw health bars
+# The health bars
 def draw_health_bar(x, y, current_hp, max_hp):
     bar_width = 200
     bar_height = 20
@@ -59,7 +59,7 @@ def draw_health_bar(x, y, current_hp, max_hp):
     pygame.draw.rect(screen, RED, (x, y, bar_width, bar_height))
     pygame.draw.rect(screen, GREEN, (x, y, fill_width, bar_height))
 
-# Player chooses a monster
+# here the player chooses the monster
 def choose_monster():
     monsters = get_monsters()
     selected_index = 0
@@ -87,7 +87,7 @@ def choose_monster():
                 if event.key == pygame.K_RETURN:
                     return monsters[selected_index]
 
-# Real-time battle system
+# this is now the battle systemn in Real-time 
 def battle():
     player_monster = choose_monster()
     enemy_monster = random.choice([m for m in get_monsters() if m != player_monster])
@@ -100,12 +100,12 @@ def battle():
 
     running = True
     last_attack_time = 0
-    attack_cooldown = 1.5  # 1.5 seconds cooldown between attacks
+    attack_cooldown = 1.5  # cooldown between attack
 
     while running:
         screen.fill(WHITE)
 
-        # Display monsters and health bars
+        # this displays the monsters and their health bars
         draw_text(f"Your Monster: {player_monster[1]}", 50, 50, GREEN)
         draw_health_bar(50, 80, player_hp, max_player_hp)
 
@@ -120,7 +120,7 @@ def battle():
             pygame.quit()
             sys.exit()
 
-        # Check attack cooldown
+        # Checks the attack cooldown
         current_time = time.time()
         if current_time - last_attack_time > attack_cooldown:
             if player_speed >= enemy_speed:

@@ -1,28 +1,27 @@
 import pygame
 import sqlite3
 
-# Initialize Pygame
+# Initializing the  Pygame
 pygame.init()
 
-# Screen settings
+# settings for the screen.
 WIDTH, HEIGHT = 800, 600
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Monster Battle - Menu System")
 
-# Colors
+# The Colors
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 GREEN = (0, 200, 0)
 RED = (200, 0, 0)
 
-# Font
 font = pygame.font.Font(None, 36)
 
-# Database connection
+# The Database connection
 def connect():
     return sqlite3.connect("database/monsters.db")
 
-# Fetch all monsters from database
+# Fetches all the monsters from database
 def get_monsters():
     conn = connect()
     cursor = conn.cursor()
@@ -31,7 +30,7 @@ def get_monsters():
     conn.close()
     return monsters
 
-# Add a new monster
+# Adds a new monster in the database
 def add_monster(name, monster_type, health, attack, defense):
     conn = connect()
     cursor = conn.cursor()
@@ -40,7 +39,7 @@ def add_monster(name, monster_type, health, attack, defense):
     conn.commit()
     conn.close()
 
-# Delete a monster
+# Deletes a monster in teh database
 def delete_monster(monster_id):
     conn = connect()
     cursor = conn.cursor()
@@ -48,7 +47,7 @@ def delete_monster(monster_id):
     conn.commit()
     conn.close()
 
-# Update a monster’s stats
+#  updates a monster’s stats in the database
 def update_monster(monster_id, health, attack, defense):
     conn = connect()
     cursor = conn.cursor()
@@ -57,9 +56,9 @@ def update_monster(monster_id, health, attack, defense):
     conn.commit()
     conn.close()
 
-# Menu options
+# The Menu options
 OPTIONS = ["View Monsters", "Add Monster", "Update Monster", "Delete Monster", "Exit"]
-selected_option = 0  # Tracks which menu option is selected
+selected_option = 0  # this tracks the menu option that is selected. 
 
 def main_menu():
     global selected_option
@@ -68,13 +67,13 @@ def main_menu():
     while running:
         screen.fill(WHITE)
 
-        # Display menu options
+      
         for i, option in enumerate(OPTIONS):
             color = GREEN if i == selected_option else BLACK
             text = font.render(option, True, color)
             screen.blit(text, (100, 100 + i * 50))
 
-        # Event handling
+        # Handing event.
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
@@ -99,7 +98,7 @@ def main_menu():
 
     pygame.quit()
 
-# Function to display monsters
+# The function that display monsters
 def view_monsters():
     monsters = get_monsters()
     running = True
@@ -124,7 +123,7 @@ def view_monsters():
 
         pygame.display.flip()
 
-# Function to add a monster
+# The function that adds a monster
 def add_monster_screen():
     name = input("Enter monster name: ")
     monster_type = input("Enter monster type (Fire/Water/Earth): ")
@@ -135,7 +134,7 @@ def add_monster_screen():
     add_monster(name, monster_type, health, attack, defense)
     print(f"Monster {name} added successfully!")
 
-# Function to delete a monster
+# the function that  deletes a monster in the screen.
 def delete_monster_screen():
     monsters = get_monsters()
     if not monsters:
@@ -150,7 +149,7 @@ def delete_monster_screen():
     delete_monster(monster_id)
     print(f"Monster ID {monster_id} deleted successfully!")
 
-# Function to update a monster
+# the function to update the  monster
 def update_monster_screen():
     monsters = get_monsters()
     if not monsters:
