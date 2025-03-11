@@ -3,7 +3,7 @@ import sqlite3
 # this establishes database connection
 def connect():
     return sqlite3.connect("database/monsters.db")
-# adds teh speed column
+# adds the speed column
 def add_speed_column():
     conn = connect()
     cursor = conn.cursor()
